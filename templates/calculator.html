@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scientific Calculator with Graph Plotting</title>
+    <style>
+        /* General styling for the calculator */
+        body {
+            background-color: #e9ecef;
+            font-family: 'Arial', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: white;
+        }
+
+        /* Container to hold both calculator and history */
+        .container {
+            display: flex;
+            align-items: flex-start;
+            margin: 20px;
+        }
+
+        /* Position the calculator on the left */
+        .calculator {
+            width: 320px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark-theme .calculator {
+            background-color: #444;
+            color: white;
+        }
+
+        /* Styling the input field */
+        input[type="text"] {
+            width: 95.5%;
+            height: 40px;
+            text-align: right;
+            font-size: 18px;
+            margin-bottom: 8px;
+            border: none;
+            border-radius: 8px;
+            background-color: #e2e6ea;
+            padding: 8px;
+            box-shadow: inset 0px 3px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-theme input[type="text"] {
+            background-color: #555;
+            color: white;
+        }
+
+        /* Button styling */
+        button {
+            width: 55px;
+            height: 55px;
+            font-size: 14px;
+            margin: 5px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s;
+        }
+
+        /* Trigonometric and function buttons (Teal) */
+        .trig-btn {
+            background-color: #20c997;
+            color: white;
+        }
+
+        .trig-btn:hover {
+            background-color: #17a589;
+        }
+
+        /* Number buttons (Soft grey) */
+        .num-btn {
+            background-color: #808891;
+            color: white;
+        }
+
+        .num-btn:hover {
+            background-color: #868e96c8;
+        }
+
+        /* Operator buttons (Orange) */
+        .op-btn {
+            background-color: #ff9461;
+            color: white;
+        }
+
+        .op-btn:hover {
+            background-color: #e96941;
+        }
+
+        /* Special buttons (Clear/Delete/Equals - Muted Blue) */
+        .spec-btn {
+            background-color: #00aaff;
+            color: white;
+        }
+
+        .spec-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* Button rows */
+        .row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* History section to display the last 5 calculations */
+        .history {
+            margin-left: 20px;
+            padding: 10px;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+            width: 200px;
+            height: 250px;
+            overflow-y: auto;
+        }
+
+        .dark-theme .history {
+            background-color: #555;
+            color: white;
+        }
+
+        .history h3 {
+            margin-top: 0;
+            font-size: 18px;
+        }
+
+        .history p {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        /* Graph Section */
+        .graph-container {
+            width: 400px;
+            height: 300px;
+            margin-left: 20px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .history {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 20px;
+            }
+
+            button {
+                width: 40px;
+                height: 40px;
+                font-size: 12px;
+            }
+
+            input[type="text"] {
+                height: 35px;
+                font-size: 16px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/9.5.1/math.min.js"></script>
+
+    <script>
+        // Function to append values to the input field
+        function appendValue(value) {
+            document.getElementById('expression').value += value;
+        }
+
+        // Function to clear the input field
+        function clearExpression() {
+            document.getElementById('expression').value = '';
+        }
+
+        // Function to delete the last character from the input field
+        function deleteLast() {
+            let expression = document.getElementById('expression').value;
+            document.getElementById('expression').value = expression.slice(0, -1);
+        }
+
+        // Function to submit the form and calculate the expression
+        function calculateExpression() {
+            document.getElementById('calculator-form').submit();
+        }
+
+        // Toggle between light and dark themes
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+        }
+
+        // Function to plot a graph from the input equation
+        let chartInstance; // Global variable to store the chart instance
+
+        function plotGraph() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            const equation = document.getElementById('equation').value || 'sin(x)';
+            const labels = [];
+            const data = [];
+
+            // Generate x and y values based on the input equation
+            for (let x = -10; x <= 10; x += 0.1) {
+                labels.push(x.toFixed(1));
+                try {
+                    let y = math.evaluate(equation.replace('x', `(${x})`));
+                    data.push(y);
+                } catch (e) {
+                    data.push(NaN); // Handle errors, if any
+                }
+            }
+
+            // If a chart already exists, destroy it before creating a new one
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // Create a new chart instance and store it in the global variable
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `y = ${equation}`,
+                        data: data,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            beginAtZero: false
+                        },
+                        y: {
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+        }
+        
+
+        // Function to handle key presses from the keyboard for both calculator and graph equation input
+        document.addEventListener('keydown', function(event) {
+            const expressionField = document.getElementById('expression');
+            const equationField = document.getElementById('equation');
+            
+            // Check if the graph input field is focused
+            if (document.activeElement === equationField) {
+                // Let the user type directly in the equation field without blocking default behavior
+                return;
+            }
+
+            // Handle numerical input for the calculator
+            if (event.key >= '0' && event.key <= '9') {
+                appendValue(event.key);
+            }
+
+            // Handle operators for the calculator
+            if (['+', '-', '*', '/'].includes(event.key)) {
+                appendValue(event.key);
+            }
+
+            // Handle parentheses
+            if (event.key === '(' || event.key === ')') {
+                appendValue(event.key);
+            }
+
+            // Handle the Enter key (for evaluation)
+            if (event.key === 'Enter') {
+                calculateExpression();
+            }
+
+            // Handle backspace (delete last character)
+            if (event.key === 'Backspace') {
+                deleteLast();
+            }
+
+            // Handle clear (Escape key)
+            if (event.key === 'Escape') {
+                clearExpression();
+            }
+
+            // Prevent default behavior for key presses in the calculator (except for graph input field)
+            if (document.activeElement !== equationField) {
+                event.preventDefault();
+            }
+        });
+
+        // Save graph as PNG
+        function saveGraph() {
+            const chart = document.getElementById('myChart').getContext('2d').chart;
+            const link = document.createElement('a');
+            link.href = chart.toBase64Image();
+            link.download = 'graph.png';
+            link.click();
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <!-- Calculator Section -->
+        <div class="calculator">
+            <form id="calculator-form" method="POST" action="/calculate">
+                <input type="text" id="expression" name="expression" value="{{ expression if expression else '' }}" readonly>
+                <br>
+
+                <!-- Scientific Functions Row -->
+                <div class="row">
+                    <button type="button" class="trig-btn" onclick="appendValue('sin(')">sin</button>
+                    <button type="button" class="trig-btn" onclick="appendValue('cos(')">cos</button>
+                    <button type="button" class="trig-btn" onclick="appendValue('tan(')">tan</button>
+                    <button type="button" class="trig-btn" onclick="appendValue('log(')">log</button>
+                    <button type="button" class="trig-btn" onclick="appendValue('ln(')">ln</button>
+                </div>
+
+                <!-- Operators Row -->
+                <div class="row">
+                    <button type="button" class="op-btn" onclick="appendValue('^')">x^n</button>
+                    <button type="button" class="op-btn" onclick="appendValue('√(')">√</button>
+                    <button type="button" class="op-btn" onclick="appendValue('∛(')">∛</button>
+                    <button type="button" class="op-btn" onclick="appendValue('(')">(</button>
+                    <button type="button" class="op-btn" onclick="appendValue(')')">)</button>
+                    <button type="button" class="op-btn" onclick="appendValue('C')">nCr</button>
+                </div>
+
+                <!-- New Functionalities Row -->
+                <div class="row">
+                    <button type="button" class="spec-btn" onclick="appendValue('10^')">10^x</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('%')">%</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('sinh(')">sinh</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('cosh(')">cosh</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('tanh(')">tanh</button>
+                </div>
+
+                <!-- Toggle and special operations -->
+                <div class="row">
+                    <button type="button" class="spec-btn" onclick="appendValue('Deg/Rad')">Deg/Rad</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('Sci')">Sci</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('log(')">log(x,b)</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('rand(')">Rand</button>
+                    <button type="button" class="spec-btn" onclick="appendValue('is_prime(')">Prime</button>
+                </div>
+
+                <!-- Numbers and Basic Operators Row -->
+                <div class="row">
+                    <button type="button" class="num-btn" onclick="appendValue('7')">7</button>
+                    <button type="button" class="num-btn" onclick="appendValue('8')">8</button>
+                    <button type="button" class="num-btn" onclick="appendValue('9')">9</button>
+                    <button type="button" class="op-btn" onclick="appendValue('/')">/</button>
+                </div>
+                <div class="row">
+                    <button type="button" class="num-btn" onclick="appendValue('4')">4</button>
+                    <button type="button" class="num-btn" onclick="appendValue('5')">5</button>
+                    <button type="button" class="num-btn" onclick="appendValue('6')">6</button>
+                    <button type="button" class="op-btn" onclick="appendValue('*')">*</button>
+                </div>
+                <div class="row">
+                    <button type="button" class="num-btn" onclick="appendValue('1')">1</button>
+                    <button type="button" class="num-btn" onclick="appendValue('2')">2</button>
+                    <button type="button" class="num-btn" onclick="appendValue('3')">3</button>
+                    <button type="button" class="op-btn" onclick="appendValue('-')">-</button>
+                </div>
+                <div class="row">
+                    <button type="button" class="num-btn" onclick="appendValue('0')">0</button>
+                    <button type="button" class="num-btn" onclick="appendValue('.')">.</button>
+                    <button type="button" class="spec-btn" onclick="clearExpression()">Clear</button>
+                    <button type="button" class="spec-btn" onclick="deleteLast()">DEL</button>
+                    <button type="button" class="op-btn" onclick="appendValue('+')">+</button>
+                </div>
+
+                <!-- Equals Button -->
+                <div class="row">
+                    <button type="button" class="spec-btn" onclick="calculateExpression()" style="width: 100%;">=</button>
+                </div>
+
+                <input type="text" value="{{ result if result else '' }}" readonly>
+            </form>
+        </div>
+
+        <!-- History Section -->
+        <div class="history">
+            <h3>History</h3>
+            {% for item in history %}
+                <p>{{ item.expression }} = {{ item.result }}</p>
+            {% endfor %}
+        </div>
+
+        <!-- Graph Plotting Section -->
+        <div class="graph-container">
+            <canvas id="myChart"></canvas>
+            <br>
+            <input type="text" id="equation" placeholder="Enter equation, e.g., sin(x)">
+            <button onclick="plotGraph()">Plot Graph</button>
+            <button onclick="saveGraph()">Save Graph as PNG</button>
+        </div>
+
+        <!-- Theme Toggle Button -->
+        <div style="margin-top: 20px;">
+            <button onclick="toggleTheme()" class="spec-btn">Theme</button>
+        </div>
+    </div>
+</body>
+</html>
